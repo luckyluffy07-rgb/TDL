@@ -137,6 +137,9 @@ python -m unittest test_chatbot.py -v
 ```
 TDL/
 ├── chatbot.py       # the whole chatbot (Gemini + OpenAI backends)
+├── web_app.py       # web version: Flask server reusing those backends
+├── static/
+│   └── index.html   # the chat web UI (HTML + CSS + JS, no build step)
 ├── test_chatbot.py  # offline unit tests
 ├── requirements.txt # Python dependencies
 ├── .env.example     # template for your API key settings
@@ -148,5 +151,42 @@ TDL/
 
 - 🌈 Stream replies token-by-token
 - 💾 Save conversation history to a file
-- 🎨 Build a web interface with Flask or Streamlit
 - 🧠 Add a `/translate` or `/summarize` command using a different system prompt
+
+## 🌐 Web version
+
+Prefer a browser to the terminal? `web_app.py` serves the same chatbot as a
+web page, reusing the exact same `.env` settings and provider backends.
+
+```bash
+pip install -r requirements.txt
+cp .env.example .env      # then paste your API key in
+python web_app.py
+```
+
+Open **http://localhost:5000** and start chatting.
+
+Features:
+
+- Chat bubbles with a typing indicator
+- **New chat** button to clear the conversation
+- Enter to send, Shift+Enter for a new line
+- Friendly error messages (bad key, rate limit, no connection)
+
+Set a different port with `PORT=8080 python web_app.py`.
+
+### How it works
+
+| Route | What it does |
+| --- | --- |
+| `GET /` | serves the chat page from `static/index.html` |
+| `GET /api/info` | reports the active provider and model |
+| `POST /api/chat` | takes `{"messages": [...]}` and returns `{"reply": "..."}` |
+
+Conversation history is kept in the browser and sent with each request, so the
+server stays stateless. Only the last 40 messages are forwarded to the AI to
+keep requests small.
+
+> **Note:** this uses Flask's development server, which is fine for local use.
+> To expose it publicly, run it behind a production WSGI server such as
+> `gunicorn -b 0.0.0.0:5000 web_app:app` and don't share your API key.
