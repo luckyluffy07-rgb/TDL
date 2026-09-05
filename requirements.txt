@@ -1,2 +1,6 @@
-openai>=3.0,<4.0
+# AI providers — the bot uses whichever key you put in .env
+google-genai>=2.0,<3.0    # Google Gemini (free tier available)
+openai>=3.0,<4.0          # OpenAI (optional alternative, pay-per-use)
+
+# Loads settings from the .env file
 python-dotenv>=1.0,<2.0

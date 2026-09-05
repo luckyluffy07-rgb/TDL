@@ -1,12 +1,12 @@
 # TDL — AI Chatbot 🤖
 
-A beginner-friendly **command-line chatbot** that talks to OpenAI's GPT models, written in Python. Type messages in your terminal, and an AI replies — it remembers the whole conversation, so you can chat back and forth.
+A beginner-friendly **command-line chatbot** in Python. It talks to **Google Gemini** — which has a **free tier** — and can also use **OpenAI** if you prefer. It remembers the whole conversation, so you can chat back and forth.
 
 ```
 $ python chatbot.py
 ============================================================
-  TDL Chatbot — powered by OpenAI
-  Model: gpt-5-mini
+  TDL Chatbot
+  AI: Google Gemini — gemini-3.8-flash
   Type /help for commands, or just start chatting!
 ============================================================
 
@@ -17,10 +17,10 @@ TDL Bot: Hi! I can answer questions, explain ideas, help write things...
 ## What you need
 
 - **Python 3.10 or newer** — check with `python --version`
-- An **OpenAI API key** — see step 3 below
+- A **Gemini API key** (free, no credit card) — see step 3 below
 - Internet connection
 
-> **Note:** an OpenAI *API key* is separate from a ChatGPT subscription. API usage is pay-per-request, but the default model (`gpt-5-mini`) is very cheap — a casual chat typically costs less than a cent. See [OpenAI pricing](https://platform.openai.com/docs/pricing).
+> 💡 **Why Gemini by default?** Google's Gemini API has a free tier with rate limits generous enough for a personal chatbot, and getting a key needs nothing but a Google account. OpenAI works too (set `PROVIDER=openai`), but its API is pay-per-use — a ChatGPT subscription does **not** cover it.
 
 ## Setup (one time)
 
@@ -45,11 +45,13 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-### 3. Get an OpenAI API key
+### 3. Get a FREE Gemini API key
 
-1. Go to **https://platform.openai.com/api-keys**
-2. Log in (or sign up), click **"Create new secret key"**, and copy it
-3. If asked, add a small amount of credit for API usage in Billing
+1. Go to **https://aistudio.google.com/apikey**
+2. Sign in with your Google account
+3. Click **"Get API key"** (or "Create API key") and copy it — it starts with `AIza`
+
+No credit card, no billing setup. The free tier is rate-limited (plenty for personal use); if you ever hit a limit, the bot tells you to wait a minute.
 
 ### 4. Create your `.env` file
 
@@ -60,7 +62,7 @@ cp .env.example .env
 Then open `.env` in any editor and paste your key:
 
 ```
-OPENAI_API_KEY=sk-your-real-key-here
+GEMINI_API_KEY=AIza-your-real-key-here
 ```
 
 > ⚠️ **Never commit your API key to GitHub.** The `.env` file is already listed in `.gitignore`, so git will not upload it. Only `.env.example` (a template with no real key) is committed.
@@ -77,7 +79,7 @@ python chatbot.py
 |-----------|---------------------------------------|
 | `/help`   | Show the command list                 |
 | `/new`    | Start a fresh conversation (clears history) |
-| `/model`  | Show which model you're talking to    |
+| `/model`  | Show which AI provider and model you're talking to |
 | `exit` / `quit` / `bye` | Leave the chat       |
 
 ## Customizing
@@ -85,27 +87,35 @@ python chatbot.py
 All settings live in your `.env` file:
 
 ```bash
-# Use a different model — e.g. the flagship
-OPENAI_MODEL=gpt-5.5
+# Use a different Gemini model (e.g. a lighter, faster one)
+GEMINI_MODEL=gemini-3.5-flash
 
 # Give the bot a personality
 CHATBOT_SYSTEM_PROMPT=You are a pirate. Always say "arr".
 ```
 
+### Using OpenAI instead (optional, paid)
+
+```bash
+PROVIDER=openai
+OPENAI_API_KEY=sk-your-key-here
+```
+
+Get a key at [platform.openai.com/api-keys](https://platform.openai.com/api-keys). API usage is pay-per-request and separate from any ChatGPT subscription — the default model `gpt-5-mini` costs fractions of a cent per chat message. If both keys are set and `PROVIDER` is unset, Gemini (the free one) wins.
+
 ## How it works (code tour)
 
-The whole bot is one file, [`chatbot.py`](chatbot.py), about 150 lines:
+The whole bot is one file, [`chatbot.py`](chatbot.py), about 250 lines:
 
-1. **`load_config()`** — reads your API key and settings from `.env`
-2. **`get_reply()`** — sends the conversation to OpenAI using the **Responses API**
-3. **`main()`** — the chat loop: reads your input, calls the AI, prints the reply
+1. **`load_config()`** — reads your keys and settings from `.env`, auto-detects the provider (Gemini if `GEMINI_API_KEY` is set, else OpenAI)
+2. **`GeminiBackend` / `OpenAIBackend`** — small classes that both expose the same `.reply(history)` method, so the chat loop doesn't care which AI it's talking to
+3. **`main()`** — the chat loop: reads your input, calls the backend, prints the reply
 
-The trick that makes it "remember" the conversation: the full history of
-messages is re-sent with every request, so each reply has the whole context.
+The trick that makes it "remember" the conversation: the full history of messages is re-sent with every request, so each reply has the whole context.
 
 ## Running the tests
 
-The tests run offline (no API key needed):
+The tests run offline (no API key or network needed):
 
 ```bash
 python -m unittest test_chatbot.py -v
@@ -115,17 +125,18 @@ python -m unittest test_chatbot.py -v
 
 | Problem | Fix |
 |---|---|
-| `No OPENAI_API_KEY found` | You skipped step 4 — create the `.env` file |
-| `Invalid API key` | Re-copy the key from platform.openai.com (no extra spaces) |
-| `Rate limit or quota reached` | You hit a usage limit — wait a minute, or check billing |
-| `Could not reach OpenAI` | Check your internet connection |
-| `ModuleNotFoundError: No module named 'openai'` | Activate your virtualenv, then `pip install -r requirements.txt` |
+| `No API key found` | You skipped step 4 — create the `.env` file |
+| `Gemini rejected your API key` | Re-copy the key from aistudio.google.com/apikey (no extra spaces) |
+| `Gemini rate limit hit` | Free tier limit — wait a minute and try again |
+| `Could not reach Google` | Check your internet connection |
+| `ModuleNotFoundError: No module named 'google'` | Activate your virtualenv, then `pip install -r requirements.txt` |
+| `Invalid OpenAI API key` | You're using `PROVIDER=openai` — check `OPENAI_API_KEY` |
 
 ## Project structure
 
 ```
 TDL/
-├── chatbot.py       # the whole chatbot
+├── chatbot.py       # the whole chatbot (Gemini + OpenAI backends)
 ├── test_chatbot.py  # offline unit tests
 ├── requirements.txt # Python dependencies
 ├── .env.example     # template for your API key settings
@@ -135,7 +146,7 @@ TDL/
 
 ## Ideas to extend it
 
-- 🌈 Stream replies token-by-token (`stream=True`)
+- 🌈 Stream replies token-by-token
 - 💾 Save conversation history to a file
 - 🎨 Build a web interface with Flask or Streamlit
 - 🧠 Add a `/translate` or `/summarize` command using a different system prompt
