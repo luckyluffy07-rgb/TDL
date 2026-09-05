@@ -4,3 +4,6 @@ openai>=3.0,<4.0          # OpenAI (optional alternative, pay-per-use)
 
 # Loads settings from the .env file
 python-dotenv>=1.0,<2.0
+
+# Web version (web_app.py)
+flask>=3.0,<4.0
